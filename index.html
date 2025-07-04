@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skin Price Comparison</title>
+  <!-- Tailwind config for class-based dark mode -->
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
+      darkMode: 'class'
+    };
+  </script>
+  <!-- Tailwind CSS v4 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeInSlide 0.3s ease-out; }
+    /* Mobile-first responsive row-style tables */
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      thead tr { display: none; }
+      tr { margin-bottom: 1rem; border-bottom: 1px solid #e5e7eb; }
+      td {
+        display: flex; justify-content: space-between;
+        padding: 0.5rem 1rem; border: none;
+        border-bottom: 1px solid #eee;
+      }
+      td::before {
+        content: attr(data-label);
+        font-weight: 600; margin-right: 0.5rem;
+        flex-shrink: 0;
+      }
+    }
+    .modal-bg { background: rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 min-h-screen p-4 text-gray-800 dark:text-gray-200">
+  <div class="max-w-4xl mx-auto bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+    <h1 class="text-2xl md:text-3xl font-bold text-center mb-6">CS2 Price Comparison</h1>
+    <div class="flex justify-end items-center mb-4 space-x-2">
+      <button id="themeToggle" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded transition">Toggle Theme</button>
+      <button id="openModal" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-transform duration-200 transform hover:scale-105">Manage Sites</button>
+    </div>
+
+    <!-- Bundle Items Section -->
+    <div class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <legend class="text-lg font-semibold">Bundle Items</legend>
+        <button id="addBundleItem" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-transform duration-200 transform hover:scale-105">+ Add Bundle Item</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table id="bundleItems" class="w-full table-auto border border-gray-300 dark:border-gray-600 rounded">
+          <thead class="bg-gray-100 dark:bg-gray-700"><tr><th class="p-2 text-left font-medium">Name</th></tr></thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-600"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Exchange Items Section -->
+    <div class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <legend class="text-lg font-semibold">Exchange Items</legend>
+        <button id="addExchangeItem" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded transition-transform duration-200 transform hover:scale-105">+ Add Exchange Item</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table id="exchangeItems" class="w-full table-auto border border-gray-300 dark:border-gray-600 rounded">
+          <thead class="bg-gray-100 dark:bg-gray-700"><tr><th class="p-2 text-left font-medium">Name</th></tr></thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-600"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold text-center mb-4">Results</h2>
+      <div id="bundleTotals" class="space-y-1 text-center mb-4"></div>
+      <div class="overflow-x-auto">
+        <table id="exchangeResults" class="w-full table-auto border border-gray-300 dark:border-gray-600 rounded">
+          <thead class="bg-gray-100 dark:bg-gray-700"><tr><th class="p-2 text-left font-medium">Item</th></tr></thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-600"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sites Modal -->
+  <div id="siteModal" class="fixed inset-0 hidden items-center justify-center modal-bg">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-11/12 max-w-lg p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Manage Sites</h3>
+        <div>
+          <button id="addSite" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded mr-2">+ Add Site</button>
+          <button id="closeModal" class="text-gray-500 dark:text-gray-200 hover:text-gray-700 dark:hover:text-gray-400">✕</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table id="sitesTable" class="w-full table-auto border border-gray-300 dark:border-gray-600 rounded">
+          <thead class="bg-gray-100 dark:bg-gray-700"><tr><th class="p-2 text-left font-medium">Site Name</th><th class="p-2 text-left font-medium">Action</th></tr></thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-600"></tbody>
+        </table>
+      </div>
+      <div class="mt-4 text-right">
+        <button id="closeModalBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let sites = [];
+    const headerLabels = {};
+    const htmlEl = document.documentElement;
+    document.getElementById('themeToggle').addEventListener('click', () => htmlEl.classList.toggle('dark'));
+
+    function buildHeaderLabels(id) {
+      headerLabels[id] = Array.from(document.querySelectorAll(`#${id} thead th`)).map(th => th.textContent.trim());
+    }
+    function renderSiteList() {
+      const tbody = document.querySelector('#siteModal #sitesTable tbody'); tbody.innerHTML = '';
+      sites.forEach((site, idx) => {
+        const tr = document.createElement('tr'); tr.className = 'bg-white dark:bg-gray-700 fade-in';
+        tr.innerHTML = `
+          <td class="p-2"><input type="text" class="siteName border border-gray-300 dark:border-gray-600 rounded p-1 w-full bg-gray-50 dark:bg-gray-600" data-idx="${idx}" value="${site}"></td>
+          <td class="p-2"><button class="removeSite bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded" data-idx="${idx}">Remove</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderHeaders() {
+      ['bundleItems','exchangeItems','exchangeResults'].forEach(id => {
+        const table = document.getElementById(id); const headRow = table.querySelector('thead tr'); headRow.innerHTML = '';
+        if (id !== 'exchangeResults') {
+          headRow.insertAdjacentHTML('beforeend', '<th class="p-2 text-left font-medium">Name</th>');
+          sites.forEach(site => headRow.insertAdjacentHTML('beforeend', `<th class="p-2 text-left font-medium">${site} Price</th>`));
+          headRow.insertAdjacentHTML('beforeend', '<th class="p-2 text-left font-medium">Action</th>');
+        } else {
+          headRow.insertAdjacentHTML('beforeend', '<th class="p-2 text-left font-medium">Item</th>');
+          sites.forEach(site => headRow.insertAdjacentHTML('beforeend', `<th class="p-2 text-left font-medium">${site} Diff</th>`));
+        }
+        buildHeaderLabels(id);
+      });
+    }
+    function insertPriceCols(newIndex) {
+      ['bundleItems','exchangeItems'].forEach(id => document.querySelectorAll(`#${id} tbody tr`).forEach(tr => {
+        const td = document.createElement('td'); td.className = 'p-2 fade-in';
+        td.innerHTML = `<input type="number" class="price border border-gray-300 dark:border-gray-600 rounded p-1 w-full bg-gray-50 dark:bg-gray-600" data-site="${newIndex}" step="0.01" value="0">`;
+        const cell = tr.querySelector('button.removeRow').closest('td'); cell.parentNode.insertBefore(td, cell);
+      }));
+    }
+    function removePriceCols(idx) { ['bundleItems','exchangeItems'].forEach(id => document.querySelectorAll(`#${id} tbody tr`).forEach(tr => { tr.removeChild(tr.children[idx+1]); tr.querySelectorAll('.price').forEach((inp,i)=>inp.dataset.site=i); })); }
+    function addRow(tableId) {
+      const tbody = document.querySelector(`#${tableId} tbody`), tr = document.createElement('tr'); tr.className = 'bg-white dark:bg-gray-700 fade-in';
+      const labels = headerLabels[tableId]; let html = `<td><input type="text" class="itemName border border-gray-300 dark:border-gray-600 rounded p-1 w-full bg-gray-50 dark:bg-gray-600" placeholder="Item name"></td>`;
+      for (let i=1;i<labels.length-1;i++) html+=`<td><input type="number" class="price border border-gray-300 dark:border-gray-600 rounded p-1 w-full bg-gray-50 dark:bg-gray-600" data-site="${i-1}" step="0.01" value="0"></td>`;
+      html+=`<td><button class="removeRow bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Remove</button></td>`;
+      tr.innerHTML=html; tr.querySelectorAll('td').forEach((td,i)=>td.setAttribute('data-label',labels[i])); tbody.appendChild(tr);
+    }
+    function removeRow(e) { if(e.target.classList.contains('removeRow')){ const r=e.target.closest('tr'); r.classList.add('opacity-0','transition-opacity','duration-200'); setTimeout(()=>{r.remove(); calculate();},200);} }
+    function calculate(){ const totals=sites.map(()=>0); document.querySelectorAll('#bundleItems .price').forEach(i=>totals[+i.dataset.site]+=parseFloat(i.value)||0);
+      const bd=document.getElementById('bundleTotals'); bd.innerHTML=''; totals.forEach((s,i)=>bd.insertAdjacentHTML('beforeend',`<p class="text-center fade-in">Bundle Total (${sites[i]}) = $${s.toFixed(2)}</p>`));
+      const trb=document.querySelector('#exchangeResults tbody'); trb.innerHTML=''; document.querySelectorAll('#exchangeItems tbody tr').forEach(tr=>{ const name=tr.querySelector('.itemName').value||'-'; const diffs=sites.map((_,i)=>0); tr.querySelectorAll('.price').forEach(inp=>diffs[+inp.dataset.site]=(parseFloat(inp.value)||0)-totals[+inp.dataset.site]); const min=Math.min(...diffs), max=Math.max(...diffs); const labels=headerLabels['exchangeResults']; const row=document.createElement('tr'); row.className='bg-white dark:bg-gray-700 fade-in'; let h=`<td>${name}</td>`; diffs.forEach((d,i)=>{ const isMin=d===min; const bgClass=isMin?'bg-green-100 dark:bg-green-900':'bg-red-100 dark:bg-red-900'; const textClass=isMin?'text-green-800 dark:text-green-200':'text-red-800 dark:text-red-200'; h+=`<td><span class="px-1 rounded ${bgClass} ${textClass}">$${d.toFixed(2)}</span></td>`; }); row.innerHTML=h; row.querySelectorAll('td').forEach((td,i)=>td.setAttribute('data-label',labels[i])); trb.appendChild(row); }); }
+    document.getElementById('openModal').addEventListener('click',()=>{renderSiteList();renderHeaders();document.getElementById('siteModal').classList.remove('hidden');document.getElementById('siteModal').classList.add('flex');});
+    document.getElementById('closeModal').addEventListener('click',()=>document.getElementById('siteModal').classList.add('hidden'));
+    document.getElementById('closeModalBtn').addEventListener('click',()=>document.getElementById('siteModal').classList.add('hidden'));
+    document.querySelector('#siteModal').addEventListener('click',e=>{if(e.target.id==='siteModal')document.getElementById('siteModal').classList.add('hidden');});
+    document.getElementById('addSite').addEventListener('click',()=>{const i=sites.length;sites.push(`Site${i+1}`);renderHeaders();renderSiteList();insertPriceCols(i);calculate();});
+    document.querySelector('#siteModal #sitesTable').addEventListener('click',e=>{if(e.target.classList.contains('removeSite')){const i=+e.target.dataset.idx;sites.splice(i,1);renderHeaders();renderSiteList();removePriceCols(i);calculate();}});
+    document.querySelector('#siteModal #sitesTable').addEventListener('input',e=>{if(e.target.classList.contains('siteName')){sites[+e.target.dataset.idx]=e.target.value;renderHeaders();calculate();}});
+    document.getElementById('addBundleItem').addEventListener('click',()=>addRow('bundleItems'));
+    document.getElementById('addExchangeItem').addEventListener('click',()=>addRow('exchangeItems'));
+    document.getElementById('bundleItems').addEventListener('click',removeRow);
+    document.getElementById('exchangeItems').addEventListener('click',removeRow);
+    document.getElementById('themeToggle').addEventListener('click',()=>document.documentElement.classList.toggle('dark'));
+    document.addEventListener('input',calculate);
+    window.addEventListener('load',()=>{sites=['Site1','Site2'];renderHeaders();addRow('bundleItems');addRow('exchangeItems');calculate();});
+  </script>
+</body>
+</html>
